@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Micro:bit 智慧追蹤終端 - 鏡像切換版</title>
+    <title>Micro:bit 智慧追蹤終端 - 手機完美版</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -15,29 +15,49 @@
         video { position: absolute; opacity: 0; pointer-events: none; }
         canvas { display: block; touch-action: none; }
 
+        /* 左上角控制台：加入過渡動畫 */
         .controls {
             position: fixed; top: 10px; left: 10px;
             background: rgba(255, 255, 255, 0.95);
             padding: 15px; border-radius: 15px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.6);
             z-index: 20; width: 220px; 
+            transition: all 0.3s ease;
+        }
+
+        /* 面板頂部列 (包含狀態與收起按鈕) */
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+        }
+        #status { font-size: 0.85em; font-weight: bold; color: #d9534f; margin: 0; }
+        
+        /* 收起按鈕樣式 */
+        #togglePanelBtn {
+            background: #eee; border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px;
+            font-size: 0.8em; font-weight: bold; color: #333; cursor: pointer;
         }
         
-        /* 配合新增的鏡像開關，將監控面板再次下移至 500px */
+        /* 面板內容區 (用來控制顯示/隱藏) */
+        #controlContent { transition: opacity 0.3s ease; }
+        .hidden-content { display: none !important; }
+
+        /* 數據監控介面：改為貼齊左下角，且增加背景穿透感 */
         .monitor {
-            position: fixed; top: 500px; left: 10px;
-            background: rgba(0, 20, 0, 0.9);
+            position: fixed; 
+            bottom: 20px; /* 固定在距離底部 20px 的位置 */
+            left: 10px;
+            background: rgba(0, 20, 0, 0.7); /* 更高的透明度 */
+            backdrop-filter: blur(3px); /* 背景模糊效果，讓後方影像若隱若現 */
             padding: 10px; border-radius: 10px;
-            border: 1px solid #00FF00;
+            border: 1px solid rgba(0, 255, 0, 0.5);
             z-index: 20; width: 220px; color: #00FF00;
             font-family: 'Courier New', monospace;
             box-sizing: border-box;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             transition: border-color 0.3s;
         }
 
-        #status { font-size: 0.85em; font-weight: bold; color: #d9534f; margin-bottom: 12px; }
-        
+        /* 內部元素樣式 (保持原樣) */
         .color-display-box {
             display: flex; align-items: center; gap: 10px;
             background: #f0f0f0; padding: 8px; border-radius: 8px;
@@ -74,8 +94,7 @@
         #connectBluetooth {
             width: 100%; padding: 10px; background: #007bff; color: white;
             border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.9em;
-            transition: background 0.3s;
-            margin-top: 5px;
+            transition: background 0.3s; margin-top: 5px;
         }
         #connectBluetooth:active { background: #0056b3; }
         
@@ -85,57 +104,62 @@
 </head>
 <body>
 
-    <div class="controls">
-        <div id="status">鏡頭啟動中...</div>
-        
-        <div class="color-display-box">
-            <span id="colorPreview"></span>
-            <div style="display: flex; flex-direction: column;">
-                <span style="font-size: 0.7em; color: #666; font-weight: bold;">目前鎖定顏色:</span>
-                <span id="colorText">尚未選擇</span>
-            </div>
+    <div class="controls" id="controlPanel">
+        <div class="panel-header">
+            <div id="status">鏡頭啟動中...</div>
+            <button id="togglePanelBtn">➖ 收起</button>
         </div>
         
-        <div class="slider-box">
-            <div class="slider-label">
-                <span>畫面光度 (Brightness)</span>
+        <div id="controlContent">
+            <div class="color-display-box">
+                <span id="colorPreview"></span>
+                <div style="display: flex; flex-direction: column;">
+                    <span style="font-size: 0.7em; color: #666; font-weight: bold;">目前鎖定顏色:</span>
+                    <span id="colorText">尚未選擇</span>
+                </div>
             </div>
-            <input type="range" id="brightness" min="50" max="250" value="100">
-            <div class="slider-label" style="color: #888; font-size: 0.65em; margin-top: 2px;">
-                <span>暗</span>
-                <span>亮</span>
+            
+            <div class="slider-box">
+                <div class="slider-label">
+                    <span>畫面光度 (Brightness)</span>
+                </div>
+                <input type="range" id="brightness" min="50" max="250" value="100">
+                <div class="slider-label" style="color: #888; font-size: 0.65em; margin-top: 2px;">
+                    <span>暗</span>
+                    <span>亮</span>
+                </div>
             </div>
-        </div>
 
-        <div class="slider-box">
-            <div class="slider-label">
-                <span>調整容錯率 (Sensitivity)</span>
+            <div class="slider-box">
+                <div class="slider-label">
+                    <span>調整容錯率 (Sensitivity)</span>
+                </div>
+                <input type="range" id="tolerance" min="10" max="180" value="70">
+                <div class="slider-label" style="color: #888; font-size: 0.65em; margin-top: 2px;">
+                    <span>低 (嚴格)</span>
+                    <span>高 (寬鬆)</span>
+                </div>
             </div>
-            <input type="range" id="tolerance" min="10" max="180" value="70">
-            <div class="slider-label" style="color: #888; font-size: 0.65em; margin-top: 2px;">
-                <span>低 (嚴格)</span>
-                <span>高 (寬鬆)</span>
+
+            <div class="switch-box">
+                <span class="switch-text">鏡像畫面 (Mirror)</span>
+                <label class="switch">
+                    <input type="checkbox" id="mirror-switch" checked>
+                    <span class="slider"></span>
+                </label>
             </div>
-        </div>
 
-        <div class="switch-box">
-            <span class="switch-text">鏡像畫面 (Mirror)</span>
-            <label class="switch">
-                <input type="checkbox" id="mirror-switch" checked>
-                <span class="slider"></span>
-            </label>
-        </div>
+            <div class="switch-box" style="border-top: none; padding-top: 0;">
+                <span class="switch-text">傳送座標數據</span>
+                <label class="switch">
+                    <input type="checkbox" id="tx-switch">
+                    <span class="slider"></span>
+                </label>
+            </div>
 
-        <div class="switch-box" style="border-top: none; padding-top: 0;">
-            <span class="switch-text">傳送座標數據</span>
-            <label class="switch">
-                <input type="checkbox" id="tx-switch">
-                <span class="slider"></span>
-            </label>
+            <div id="bt-status" style="font-size: 0.7em; margin-bottom: 8px; text-align: center; color: #666;">BT: 未連線</div>
+            <button id="connectBluetooth">📶 連線 Micro:bit</button>
         </div>
-
-        <div id="bt-status" style="font-size: 0.7em; margin-bottom: 8px; text-align: center; color: #666;">BT: 未連線</div>
-        <button id="connectBluetooth">📶 連線 Micro:bit</button>
     </div>
 
     <div class="monitor" id="monitorBox">
@@ -153,11 +177,16 @@
         const canvas = document.getElementById('output');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         
+        // UI 元素
+        const togglePanelBtn = document.getElementById('togglePanelBtn');
+        const controlContent = document.getElementById('controlContent');
+        const controlPanel = document.getElementById('controlPanel');
+        
         const colorPreview = document.getElementById('colorPreview');
         const colorText = document.getElementById('colorText');
         const toleranceInput = document.getElementById('tolerance');
         const brightnessInput = document.getElementById('brightness');
-        const mirrorSwitch = document.getElementById('mirror-switch'); // 新增鏡像變數
+        const mirrorSwitch = document.getElementById('mirror-switch');
         const txSwitch = document.getElementById('tx-switch');
         
         const statusText = document.getElementById('status');
@@ -169,6 +198,21 @@
 
         let targetR = null, targetG = null, targetB = null;
         let isTracking = false;
+        let isPanelOpen = true; // 面板開關狀態
+
+        // --- 面板收合邏輯 ---
+        togglePanelBtn.addEventListener('click', () => {
+            isPanelOpen = !isPanelOpen;
+            if (isPanelOpen) {
+                controlContent.classList.remove('hidden-content');
+                togglePanelBtn.innerText = "➖ 收起";
+                controlPanel.style.paddingBottom = "15px";
+            } else {
+                controlContent.classList.add('hidden-content');
+                togglePanelBtn.innerText = "⚙️ 展開控制台";
+                controlPanel.style.paddingBottom = "5px"; // 收起時縮小下方空白
+            }
+        });
 
         // 藍牙變數
         const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
@@ -285,7 +329,6 @@
 
         async function sendToMicrobit(tx, ty, isLost = false) {
             if (!rxCharacteristic) return; 
-
             if (!txSwitch.checked) return;
 
             const dataStr = `${tx},${ty}`;
@@ -333,13 +376,16 @@
                 video.srcObject = stream;
                 video.addEventListener('loadeddata', () => {
                     video.play();
-                    statusText.innerText = "請點選目標顏色";
+                    statusText.innerText = "點選畫面上鎖定目標";
                     processFrame();
                 });
             } catch (error) { statusText.innerText = "相機權限受阻"; }
         }
 
         function handleSelectColor(e) {
+            // 如果點擊的是控制台裡面的東西，不要觸發顏色選取
+            if (controlPanel.contains(e.target) || monitorBox.contains(e.target)) return;
+            
             e.preventDefault();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -352,7 +398,7 @@
             
             isTracking = true;
         }
-        canvas.addEventListener('touchstart', handleSelectColor, false);
+        canvas.addEventListener('touchstart', handleSelectColor, {passive: false});
         canvas.addEventListener('mousedown', handleSelectColor, false);
 
         function processFrame() {
@@ -360,7 +406,6 @@
                 
                 ctx.save(); 
                 
-                // 【關鍵修改】：依據開關決定是否反轉 X 軸
                 if (mirrorSwitch.checked) {
                     ctx.scale(-1, 1);
                     ctx.filter = `brightness(${brightnessInput.value}%)`; 
